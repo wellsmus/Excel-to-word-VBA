@@ -1,0 +1,191 @@
+Sub ExportExcelToWord()
+    ' ExportExcelToWord Macro
+    ' This macro exports data from the active Excel worksheet to a new Word document
+    
+    Dim wdApp As Object       ' Word Application
+    Dim wdDoc As Object       ' Word Document
+    Dim xlSheet As Worksheet  ' Excel Worksheet
+    Dim dataRange As Range    ' Range containing data to export
+    Dim cell As Range         ' Individual cell
+    Dim r As Long, c As Long  ' Row and column counters
+    Dim lastRow As Long, lastCol As Long ' Last row and column with data
+    Dim tableContent() As String ' Array to hold table data
+    
+    ' Turn off screen updating for better performance
+    Application.ScreenUpdating = False
+    
+    ' Use current active sheet
+    Set xlSheet = ActiveSheet
+    
+    ' Find the last row and column with data
+    lastRow = xlSheet.Cells(xlSheet.Rows.Count, 1).End(xlUp).Row
+    lastCol = xlSheet.Cells(1, xlSheet.Columns.Count).End(xlToLeft).Column
+    
+    ' Define the range to export
+    Set dataRange = xlSheet.Range(xlSheet.Cells(1, 1), xlSheet.Cells(lastRow, lastCol))
+    
+    ' Create a new instance of Word
+    On Error Resume Next
+    Set wdApp = GetObject(, "Word.Application")
+    If Err.Number <> 0 Then
+        Set wdApp = CreateObject("Word.Application")
+    End If
+    On Error GoTo 0
+    
+    ' Make Word visible
+    wdApp.Visible = True
+    
+    ' Add a new document
+    Set wdDoc = wdApp.Documents.Add
+    
+    ' Add a title to the Word document
+    wdDoc.Content.Font.Size = 14
+    wdDoc.Content.Font.Bold = True
+    wdDoc.Content.Text = "Excel Data Export: " & xlSheet.Parent.Name & " - " & xlSheet.Name & vbCr & vbCr
+    wdDoc.Content.Font.Bold = False
+    wdDoc.Content.Font.Size = 11
+    
+    ' Resize array to hold table data
+    ReDim tableContent(1 To lastRow, 1 To lastCol)
+    
+    ' Fill array with data from Excel
+    For r = 1 To lastRow
+        For c = 1 To lastCol
+            tableContent(r, c) = xlSheet.Cells(r, c).Text
+        Next c
+    Next r
+    
+    ' Add a table to the Word document
+    Dim wdTable As Object
+    Set wdTable = wdDoc.Tables.Add(wdDoc.Paragraphs(wdDoc.Paragraphs.Count).Range, lastRow, lastCol)
+    
+    ' Format the table
+    wdTable.Style = "Grid Table 1 Light"
+    
+    ' Fill the table with data
+    For r = 1 To lastRow
+        For c = 1 To lastCol
+            wdTable.Cell(r, c).Range.Text = tableContent(r, c)
+        Next c
+    Next r
+    
+    ' If first row contains headers, format it
+    wdTable.Rows(1).Range.Font.Bold = True
+    wdTable.Rows(1).Shading.BackgroundPatternColor = wdApp.Application.RGB(220, 220, 220)
+    
+    ' Auto fit the table to contents
+    wdTable.AutoFitBehavior 1  ' wdAutoFitContent
+    
+    ' Add export details at the end of document
+    wdDoc.Content.InsertAfter vbCr & vbCr
+    wdDoc.Content.InsertAfter "Exported from Excel on " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+    
+    ' Clean up objects
+    Set wdTable = Nothing
+    Set wdDoc = Nothing
+    Set wdApp = Nothing
+    Set dataRange = Nothing
+    Set xlSheet = Nothing
+    
+    ' Turn screen updating back on
+    Application.ScreenUpdating = True
+    
+    MsgBox "Excel data has been successfully exported to Word!", vbInformation
+End Sub
+
+Sub ExportExcelRangeToWord()
+    ' ExportExcelRangeToWord Macro
+    ' This macro exports a selected range from Excel to a new Word document
+    
+    Dim wdApp As Object       ' Word Application
+    Dim wdDoc As Object       ' Word Document
+    Dim xlRange As Range      ' Excel Range to export
+    Dim r As Long, c As Long  ' Row and column counters
+    Dim rowCount As Long, colCount As Long ' Row and column counts
+    Dim tableContent() As String ' Array to hold table data
+    
+    ' Check if a range is selected
+    If Selection.Cells.Count = 1 And Selection.Cells(1, 1).Value = "" Then
+        MsgBox "Please select a range to export!", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Use selected range
+    Set xlRange = Selection
+    rowCount = xlRange.Rows.Count
+    colCount = xlRange.Columns.Count
+    
+    ' Turn off screen updating for better performance
+    Application.ScreenUpdating = False
+    
+    ' Create a new instance of Word
+    On Error Resume Next
+    Set wdApp = GetObject(, "Word.Application")
+    If Err.Number <> 0 Then
+        Set wdApp = CreateObject("Word.Application")
+    End If
+    On Error GoTo 0
+    
+    ' Make Word visible
+    wdApp.Visible = True
+    
+    ' Add a new document
+    Set wdDoc = wdApp.Documents.Add
+    
+    ' Add a title to the Word document
+    wdDoc.Content.Font.Size = 14
+    wdDoc.Content.Font.Bold = True
+    wdDoc.Content.Text = "Excel Data Export - Selected Range" & vbCr & vbCr
+    wdDoc.Content.Font.Bold = False
+    wdDoc.Content.Font.Size = 11
+    
+    ' Resize array to hold table data
+    ReDim tableContent(1 To rowCount, 1 To colCount)
+    
+    ' Fill array with data from Excel
+    For r = 1 To rowCount
+        For c = 1 To colCount
+            tableContent(r, c) = xlRange.Cells(r, c).Text
+        Next c
+    Next r
+    
+    ' Add a table to the Word document
+    Dim wdTable As Object
+    Set wdTable = wdDoc.Tables.Add(wdDoc.Paragraphs(wdDoc.Paragraphs.Count).Range, rowCount, colCount)
+    
+    ' Format the table
+    wdTable.Style = "Grid Table 1 Light"
+    
+    ' Fill the table with data
+    For r = 1 To rowCount
+        For c = 1 To colCount
+            wdTable.Cell(r, c).Range.Text = tableContent(r, c)
+        Next c
+    Next r
+    
+    ' Auto fit the table to contents
+    wdTable.AutoFitBehavior 1  ' wdAutoFitContent
+    
+    ' Add export details at the end of document
+    wdDoc.Content.InsertAfter vbCr & vbCr
+    wdDoc.Content.InsertAfter "Exported from Excel on " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+    
+    ' Clean up objects
+    Set wdTable = Nothing
+    Set wdDoc = Nothing
+    Set wdApp = Nothing
+    Set xlRange = Nothing
+    
+    ' Turn screen updating back on
+    Application.ScreenUpdating = True
+    
+    MsgBox "Selected data has been successfully exported to Word!", vbInformation
+End Sub
+
+Function IsWordInstalled() As Boolean
+    ' Check if Microsoft Word is installed
+    On Error Resume Next
+    CreateObject ("Word.Application")
+    IsWordInstalled = (Err.Number = 0)
+    On Error GoTo 0
+End Function
