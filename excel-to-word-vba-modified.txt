@@ -1,0 +1,245 @@
+Sub ExcelRowsToParagraphs()
+    ' ExcelRowsToParagraphs Macro
+    ' Converts Excel rows to formatted paragraphs in Word where:
+    ' Column A = String A (reference)
+    ' Column B = Number B (claim number)
+    ' Column C = Number C (limitation number)
+    ' Column D = Text D (to be bold)
+    ' Column E = Number E (paragraph number)
+    ' Column F = Text F (to be in quotes)
+    ' Format: "Per claim B, A teaches the limitations of C. A further teaches D in par E: "F""
+    
+    Dim wdApp As Object       ' Word Application
+    Dim wdDoc As Object       ' Word Document
+    Dim xlSheet As Worksheet  ' Excel Worksheet
+    Dim lastRow As Long       ' Last row with data
+    Dim r As Long             ' Row counter
+    Dim strA As String        ' Column A value (string)
+    Dim strB As String        ' Column B value (number)
+    Dim strC As String        ' Column C value (number)
+    Dim strD As String        ' Column D value (text to be bold)
+    Dim strE As String        ' Column E value (number)
+    Dim strF As String        ' Column F value (text in quotes)
+    Dim paraText As String    ' Paragraph text
+    
+    ' Turn off screen updating for better performance
+    Application.ScreenUpdating = False
+    
+    ' Use current active sheet
+    Set xlSheet = ActiveSheet
+    
+    ' Find the last row with data in column A
+    lastRow = xlSheet.Cells(xlSheet.Rows.Count, 1).End(xlUp).Row
+    
+    ' Check if there's data to process
+    If lastRow < 2 Then ' Assuming row 1 might be headers
+        MsgBox "No data found to convert!", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Check if Word is installed
+    If Not IsWordInstalled() Then
+        MsgBox "Microsoft Word is not installed or available!", vbCritical
+        Exit Sub
+    End If
+    
+    ' Create a new instance of Word
+    On Error Resume Next
+    Set wdApp = GetObject(, "Word.Application")
+    If Err.Number <> 0 Then
+        Set wdApp = CreateObject("Word.Application")
+    End If
+    On Error GoTo 0
+    
+    ' Make Word visible
+    wdApp.Visible = True
+    
+    ' Add a new document
+    Set wdDoc = wdApp.Documents.Add
+    
+    ' Add a title to the Word document
+    wdDoc.Content.Font.Size = 14
+    wdDoc.Content.Font.Bold = True
+    wdDoc.Content.Text = "Excel Data Converted to Formatted Paragraphs" & vbCr & vbCr
+    wdDoc.Content.Font.Bold = False
+    wdDoc.Content.Font.Size = 11
+    
+    ' Process each row starting from row 2 (assuming row 1 contains headers)
+    For r = 2 To lastRow
+        ' Get cell values from each column
+        strA = Trim(xlSheet.Cells(r, 1).Text)  ' Column A - String A
+        strB = Trim(xlSheet.Cells(r, 2).Text)  ' Column B - Number B
+        strC = Trim(xlSheet.Cells(r, 3).Text)  ' Column C - Number C
+        strD = Trim(xlSheet.Cells(r, 4).Text)  ' Column D - Text D (to be bold)
+        strE = Trim(xlSheet.Cells(r, 5).Text)  ' Column E - Number E
+        strF = Trim(xlSheet.Cells(r, 6).Text)  ' Column F - Text F (quoted)
+        
+        ' Skip empty rows
+        If strA <> "" Then
+            ' Create paragraph with initial text before the bold part
+            paraText = "Per claim " & strB & ", " & strA & " teaches the limitations of " & strC & ". " & strA & " further teaches "
+            
+            ' Add the paragraph to the document
+            wdDoc.Paragraphs.Add
+            wdDoc.Paragraphs(wdDoc.Paragraphs.Count).Range.Text = paraText
+            
+            ' Move insertion point to end of document
+            wdDoc.Content.InsertParagraphAfter
+            wdDoc.Content.Collapse 0 ' wdCollapseEnd
+            
+            ' Add the bold part (strD)
+            wdDoc.Paragraphs(wdDoc.Paragraphs.Count).Range.Text = strD
+            
+            ' Select the last added text (strD) and make it bold
+            wdDoc.Paragraphs(wdDoc.Paragraphs.Count).Range.Select
+            wdApp.Selection.Font.Bold = True
+            
+            ' Add the remaining text
+            wdDoc.Content.InsertAfter " in par " & strE & ": """ & strF & """"
+            
+            ' Move to the end for next paragraph
+            wdDoc.Content.Collapse 0 ' wdCollapseEnd
+            wdDoc.Content.InsertParagraphAfter
+        End If
+    Next r
+    
+    ' Add export details at the end of document
+    wdDoc.Content.InsertAfter vbCr
+    wdDoc.Content.InsertAfter "Exported from Excel on " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+    
+    ' Clean up objects
+    Set wdDoc = Nothing
+    Set wdApp = Nothing
+    Set xlSheet = Nothing
+    
+    ' Turn screen updating back on
+    Application.ScreenUpdating = True
+    
+    MsgBox "Excel data has been successfully converted to formatted paragraphs in Word!", vbInformation
+End Sub
+
+Sub ExcelSelectedRowsToParagraphs()
+    ' ExcelSelectedRowsToParagraphs Macro
+    ' Converts selected Excel rows to formatted paragraphs in Word
+    ' Same format as ExcelRowsToParagraphs but works on a selection
+    
+    Dim wdApp As Object       ' Word Application
+    Dim wdDoc As Object       ' Word Document
+    Dim xlRange As Range      ' Excel Range
+    Dim r As Long             ' Row counter
+    Dim rowCount As Long      ' Number of rows in selection
+    Dim strA As String        ' Column A value (string)
+    Dim strB As String        ' Column B value (number)
+    Dim strC As String        ' Column C value (number)
+    Dim strD As String        ' Column D value (text to be bold)
+    Dim strE As String        ' Column E value (number)
+    Dim strF As String        ' Column F value (text in quotes)
+    Dim paraText As String    ' Paragraph text
+    
+    ' Check if a range is selected
+    If Selection.Cells.Count = 0 Then
+        MsgBox "Please select a range to process!", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Use selected range
+    Set xlRange = Selection
+    rowCount = xlRange.Rows.Count
+    
+    ' Check if the selection has enough columns
+    If xlRange.Columns.Count < 6 Then
+        MsgBox "Selection must contain at least 6 columns (A through F)!", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Turn off screen updating for better performance
+    Application.ScreenUpdating = False
+    
+    ' Check if Word is installed
+    If Not IsWordInstalled() Then
+        MsgBox "Microsoft Word is not installed or available!", vbCritical
+        Exit Sub
+    End If
+    
+    ' Create a new instance of Word
+    On Error Resume Next
+    Set wdApp = GetObject(, "Word.Application")
+    If Err.Number <> 0 Then
+        Set wdApp = CreateObject("Word.Application")
+    End If
+    On Error GoTo 0
+    
+    ' Make Word visible
+    wdApp.Visible = True
+    
+    ' Add a new document
+    Set wdDoc = wdApp.Documents.Add
+    
+    ' Add a title to the Word document
+    wdDoc.Content.Font.Size = 14
+    wdDoc.Content.Font.Bold = True
+    wdDoc.Content.Text = "Excel Data Converted to Formatted Paragraphs" & vbCr & vbCr
+    wdDoc.Content.Font.Bold = False
+    wdDoc.Content.Font.Size = 11
+    
+    ' Process each row in the selection
+    For r = 1 To rowCount
+        ' Get cell values from each column
+        strA = Trim(xlRange.Cells(r, 1).Text)  ' Column A - String A
+        strB = Trim(xlRange.Cells(r, 2).Text)  ' Column B - Number B
+        strC = Trim(xlRange.Cells(r, 3).Text)  ' Column C - Number C
+        strD = Trim(xlRange.Cells(r, 4).Text)  ' Column D - Text D (to be bold)
+        strE = Trim(xlRange.Cells(r, 5).Text)  ' Column E - Number E
+        strF = Trim(xlRange.Cells(r, 6).Text)  ' Column F - Text F (quoted)
+        
+        ' Skip empty rows and header rows
+        If strA <> "" And Not IsNumeric(strB) = False Then
+            ' Create paragraph with initial text before the bold part
+            paraText = "Per claim " & strB & ", " & strA & " teaches the limitations of " & strC & ". " & strA & " further teaches "
+            
+            ' Add the paragraph to the document
+            wdDoc.Paragraphs.Add
+            wdDoc.Paragraphs(wdDoc.Paragraphs.Count).Range.Text = paraText
+            
+            ' Move insertion point to end of document
+            wdDoc.Content.InsertParagraphAfter
+            wdDoc.Content.Collapse 0 ' wdCollapseEnd
+            
+            ' Add the bold part (strD)
+            wdDoc.Paragraphs(wdDoc.Paragraphs.Count).Range.Text = strD
+            
+            ' Select the last added text (strD) and make it bold
+            wdDoc.Paragraphs(wdDoc.Paragraphs.Count).Range.Select
+            wdApp.Selection.Font.Bold = True
+            
+            ' Add the remaining text
+            wdDoc.Content.InsertAfter " in par " & strE & ": """ & strF & """"
+            
+            ' Move to the end for next paragraph
+            wdDoc.Content.Collapse 0 ' wdCollapseEnd
+            wdDoc.Content.InsertParagraphAfter
+        End If
+    Next r
+    
+    ' Add export details at the end of document
+    wdDoc.Content.InsertAfter vbCr
+    wdDoc.Content.InsertAfter "Exported from Excel on " & Format(Now, "yyyy-mm-dd hh:mm:ss")
+    
+    ' Clean up objects
+    Set wdDoc = Nothing
+    Set wdApp = Nothing
+    Set xlRange = Nothing
+    
+    ' Turn screen updating back on
+    Application.ScreenUpdating = True
+    
+    MsgBox "Selected Excel data has been successfully converted to formatted paragraphs in Word!", vbInformation
+End Sub
+
+Function IsWordInstalled() As Boolean
+    ' Check if Microsoft Word is installed
+    On Error Resume Next
+    CreateObject ("Word.Application")
+    IsWordInstalled = (Err.Number = 0)
+    On Error GoTo 0
+End Function
