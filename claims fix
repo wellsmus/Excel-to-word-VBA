@@ -1,0 +1,162 @@
+Option Explicit
+
+Sub RunAllMyMacros()
+    TextColumns1
+    TransposeAndCleanRows
+    CleanAndFormatSheet
+    ProcessClaimsColumn_WithAReset_Space
+    AddHeaderRow
+End Sub
+
+Sub TextColumns1()
+'
+Worksheets("Sheet1").Activate
+ActiveSheet.Paste
+Selection.TextToColumns DataType:=xlDelimited, _
+ ConsecutiveDelimiter:=True, Semicolon:=True, Other:=True, OtherChar:="."
+ 
+End Sub
+
+Sub TransposeAndCleanRows()
+    Dim ws As Worksheet
+    Dim lastRow As Long, lastCol As Long
+    Dim r As Long, c As Long
+    Dim insertAt As Long
+    Dim origA As Variant
+    
+    Set ws = ActiveSheet
+    Application.ScreenUpdating = False
+
+    ' Find the last row with data in column B (to make sure we don't miss any row)
+    lastRow = ws.Cells(ws.Rows.Count, 2).End(xlUp).row
+
+    ' Go from last row up to row 1 to handle row insertions correctly
+    For r = lastRow To 1 Step -1
+        ' Find the last column with data in this row
+        lastCol = ws.Cells(r, ws.Columns.Count).End(xlToLeft).Column
+        insertAt = r + 1 ' Next row to insert at
+        origA = ws.Cells(r, 1).Value ' Store original A value
+
+        For c = 3 To lastCol ' Start at column C (3)
+            If Not IsEmpty(ws.Cells(r, c).Value) Then
+                ' Insert a new row at insertAt
+                ws.Rows(insertAt).Insert Shift:=xlDown
+                ' Copy value from this cell to column B of the new row
+                ws.Cells(insertAt, 2).Value = ws.Cells(r, c).Value
+                ' Copy original column A value to the new row in column A
+                ws.Cells(insertAt, 1).Value = origA
+                ' Clear the original data
+                ws.Cells(r, c).ClearContents
+                insertAt = insertAt + 1
+            End If
+        Next c
+    Next r
+
+    Application.ScreenUpdating = True
+    MsgBox "Transpose complete!"
+End Sub
+
+Sub CleanAndFormatSheet()
+    Dim ws As Worksheet
+    Dim r As Range, c As Range
+    Set ws = ActiveSheet
+
+    Application.ScreenUpdating = False
+
+    ' Standardize font, size, and bold for entire sheet
+    With ws.Cells
+        .Font.Name = "Calibri"
+        .Font.Size = 11
+        .Font.Bold = False
+        .WrapText = True
+    End With
+
+    ' Clean spaces in all cells in the used range
+    For Each r In ws.UsedRange.Rows
+        For Each c In r.Cells
+            If VarType(c.Value) = vbString Then
+                ' Remove leading/trailing, and reduce multiple spaces to one
+                c.Value = Application.WorksheetFunction.Trim(Replace(c.Value, vbTab, " "))
+                Do While InStr(c.Value, "  ") > 0
+                    c.Value = Replace(c.Value, "  ", " ")
+                Loop
+            End If
+        Next c
+    Next r
+
+    ' Auto-fit columns
+    ws.UsedRange.Columns.AutoFit
+' Double the width of Column B
+    ws.Columns("B").ColumnWidth = ws.Columns("B").ColumnWidth * 2
+    
+    ' Autofit row heights based on the new column width
+    ws.Rows.AutoFit
+
+    Application.ScreenUpdating = True
+    MsgBox "Sheet cleaned, font normalized, columns auto-fit, and text wrapped!"
+End Sub
+
+
+
+Sub ProcessClaimsColumn_WithAReset_Space()
+    Dim ws As Worksheet
+    Dim lastRow As Long, row As Long
+    Dim claimNum As Variant
+    Dim content As String
+    Dim iStart As Long, iEnd As Long, tempNum As String
+    Set ws = ActiveSheet
+
+    ' Insert a new column after A (only if not already inserted)
+    If ws.Cells(1, 2).Value <> "" Or ws.Cells(2, 2).Value <> "" Then
+        ws.Columns(2).Insert Shift:=xlToRight
+    End If
+
+    lastRow = ws.Cells(ws.Rows.Count, 3).End(xlUp).row
+    claimNum = ""
+
+    For row = 1 To lastRow
+        content = ws.Cells(row, 3).Value
+        
+        ' If cell starts with "A " or "a ", reset claimNum and skip
+        If Left(content, 2) = "A " Or Left(content, 2) = "a " Then
+            claimNum = ""
+            ws.Cells(row, 2).Value = ""
+            GoTo NextRow
+        End If
+        
+        iStart = InStr(1, LCase(content), "claim ")
+        If iStart > 0 Then
+            iEnd = iStart + 6
+            tempNum = ""
+            ' Extract the number after "claim "
+            Do While Mid(content, iEnd, 1) >= "0" And Mid(content, iEnd, 1) <= "9"
+                tempNum = tempNum & Mid(content, iEnd, 1)
+                iEnd = iEnd + 1
+            Loop
+            ' Check for ", " after the number
+            If tempNum <> "" And Mid(content, iEnd, 2) = ", " Then
+                claimNum = tempNum
+                ' Remove everything up to and including "claim N, "
+                ws.Cells(row, 3).Value = Trim(Mid(content, iEnd + 2))
+            End If
+        End If
+        ' Fill column B with the last found claim number
+        ws.Cells(row, 2).Value = claimNum
+NextRow:
+    Next row
+
+    MsgBox "Processing complete!"
+End Sub
+
+Sub AddHeaderRow()
+    
+    Dim ws As Worksheet
+    Set ws = ActiveSheet
+    ws.Range("A1").Value = "Clm No"
+    ws.Range("B1").Value = "Dep On"
+    ws.Range("C1").Value = "Clm Txt"
+    ws.Columns("A:B").ColumnWidth = 4
+    ws.Rows(1).AutoFit
+    
+End Sub
+
