@@ -1,11 +1,14 @@
 Option Explicit
 
 Sub RunAllMyMacros()
+
     TextColumns1
     TransposeAndCleanRows
     CleanAndFormatSheet
     ProcessClaimsColumn_WithAReset_Space
     AddHeaderRow
+    DeleteRowsIfColCEmpty
+    
 End Sub
 
 Sub TextColumns1()
@@ -159,4 +162,21 @@ Sub AddHeaderRow()
     ws.Rows(1).AutoFit
     
 End Sub
+
+Sub DeleteRowsIfColCEmpty()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+
+    Set ws = ActiveSheet
+    lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).row
+
+    ' Loop from the last row upwards
+    For i = lastRow To 1 Step -1
+        If IsEmpty(ws.Cells(i, "C")) Or ws.Cells(i, "C").Value = "" Then
+            ws.Rows(i).Delete
+        End If
+    Next i
+End Sub
+
 
