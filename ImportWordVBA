@@ -1,29 +1,48 @@
-Sub CreateParagraphsFromTable()
-    Dim tbl As Table
-    Dim r As Long, lastRow As Long
+Sub CreateParagraphsFromExcel()
+    Dim xlApp As Object
+    Dim xlBook As Object
+    Dim xlSheet As Object
+    Dim lastRow As Long, i As Long
     Dim boldText As String, normalText As String
     Dim para As Paragraph
     Dim rng As Range
+    Dim excelFilePath As String
 
-    ' Assumes first table in the document
-    Set tbl = ActiveDocument.Tables(1)
-    lastRow = tbl.Rows.Count
+    ' Prompt user for Excel file
+    excelFilePath = InputBox("Enter full path to Excel file:", "Excel File Path")
+    If excelFilePath = "" Then Exit Sub
 
-    For r = 2 To lastRow ' start after header
-        boldText = tbl.Cell(r, 3).Range.Text
-        normalText = tbl.Cell(r, 4).Range.Text
-        ' Remove end-of-cell markers (Chr(13) & Chr(7))
-        boldText = Left(boldText, Len(boldText) - 2)
-        normalText = Left(normalText, Len(normalText) - 2)
+    ' Open Excel and the workbook
+    Set xlApp = CreateObject("Excel.Application")
+    xlApp.Visible = False
+    Set xlBook = xlApp.Workbooks.Open(excelFilePath)
+    Set xlSheet = xlBook.Worksheets(1) ' Change sheet if needed
 
-        Set para = ActiveDocument.Paragraphs.Add
-        Set rng = para.Range
-        rng.Text = boldText & " "
-        rng.Font.Bold = True
+    ' Find last row in column C
+    lastRow = xlSheet.Cells(xlSheet.Rows.Count, 3).End(-4162).Row ' -4162 = xlUp
 
-        rng.Collapse Direction:=wdCollapseEnd
-        rng.InsertAfter """" & normalText & """"
-        rng.MoveStart wdCharacter, Len(boldText) + 1
-        rng.Font.Bold = False
-    Next r
+    For i = 2 To lastRow
+        boldText = xlSheet.Cells(i, 3).Value
+        normalText = xlSheet.Cells(i, 4).Value
+
+        ' Skip empty C cells
+        If Trim(boldText) <> "" Then
+            Set para = ActiveDocument.Paragraphs.Add
+            Set rng = para.Range
+            rng.Text = boldText & " "
+            rng.Font.Bold = True
+
+            rng.Collapse Direction:=0 'wdCollapseEnd
+            rng.InsertAfter """" & normalText & """"
+            rng.MoveStart wdCharacter, Len(boldText) + 1
+            rng.Font.Bold = False
+        End If
+    Next i
+
+    ' Cleanup
+    xlBook.Close False
+    xlApp.Quit
+    Set xlSheet = Nothing
+    Set xlBook = Nothing
+    Set xlApp = Nothing
 End Sub
