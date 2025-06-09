@@ -1,27 +1,29 @@
-Sub ImportExcelTableWithFormatting()
-    Dim xlApp As Object, xlBook As Object, xlSheet As Object
-    Dim lastRow As Long, i As Long
-    Dim para As Paragraph
+Sub CreateParagraphsFromTable()
+    Dim tbl As Table
+    Dim r As Long, lastRow As Long
     Dim boldText As String, normalText As String
+    Dim para As Paragraph
+    Dim rng As Range
 
-    ' Change path and sheet as needed
-    Set xlApp = GetObject(, "Excel.Application")
-    Set xlBook = xlApp.ActiveWorkbook
-    Set xlSheet = xlBook.ActiveSheet
+    ' Assumes first table in the document
+    Set tbl = ActiveDocument.Tables(1)
+    lastRow = tbl.Rows.Count
 
-    lastRow = xlSheet.Cells(xlSheet.Rows.Count, "C").End(-4162).Row ' -4162 = xlUp
-
-    For i = 2 To lastRow
-        boldText = xlSheet.Cells(i, "C").Value
-        normalText = xlSheet.Cells(i, "D").Value
+    For r = 2 To lastRow ' start after header
+        boldText = tbl.Cell(r, 3).Range.Text
+        normalText = tbl.Cell(r, 4).Range.Text
+        ' Remove end-of-cell markers (Chr(13) & Chr(7))
+        boldText = Left(boldText, Len(boldText) - 2)
+        normalText = Left(normalText, Len(normalText) - 2)
 
         Set para = ActiveDocument.Paragraphs.Add
-        With para.Range
-            .Text = boldText & " "
-            .Font.Bold = True
-            .Collapse 0 ' wdCollapseEnd
-            .InsertAfter """" & normalText & """"
-            .Characters(.Characters.Count - Len(normalText) - 1).Font.Bold = False
-        End With
-    Next i
+        Set rng = para.Range
+        rng.Text = boldText & " "
+        rng.Font.Bold = True
+
+        rng.Collapse Direction:=wdCollapseEnd
+        rng.InsertAfter """" & normalText & """"
+        rng.MoveStart wdCharacter, Len(boldText) + 1
+        rng.Font.Bold = False
+    Next r
 End Sub
