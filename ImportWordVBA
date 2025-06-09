@@ -1,0 +1,27 @@
+Sub ImportExcelTableWithFormatting()
+    Dim xlApp As Object, xlBook As Object, xlSheet As Object
+    Dim lastRow As Long, i As Long
+    Dim para As Paragraph
+    Dim boldText As String, normalText As String
+
+    ' Change path and sheet as needed
+    Set xlApp = GetObject(, "Excel.Application")
+    Set xlBook = xlApp.ActiveWorkbook
+    Set xlSheet = xlBook.ActiveSheet
+
+    lastRow = xlSheet.Cells(xlSheet.Rows.Count, "C").End(-4162).Row ' -4162 = xlUp
+
+    For i = 2 To lastRow
+        boldText = xlSheet.Cells(i, "C").Value
+        normalText = xlSheet.Cells(i, "D").Value
+
+        Set para = ActiveDocument.Paragraphs.Add
+        With para.Range
+            .Text = boldText & " "
+            .Font.Bold = True
+            .Collapse 0 ' wdCollapseEnd
+            .InsertAfter """" & normalText & """"
+            .Characters(.Characters.Count - Len(normalText) - 1).Font.Bold = False
+        End With
+    Next i
+End Sub
